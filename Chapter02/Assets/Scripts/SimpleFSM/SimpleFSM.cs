@@ -93,19 +93,13 @@ public class SimpleFSM : FSM
     /// </summary>
     protected void UpdateSearchState()
     {
-        float curWaitTime = 0;
-        float MaxWaitTime = 600f;
         destPos = curSearchDirection * Vector3.Distance(transform.position, playerTransform.position);
         if (Vector3.Distance(transform.position, destPos) <= 100.0f)
         {
-            while (curWaitTime < MaxWaitTime)
-            {
-                curWaitTime += Time.deltaTime;
                 if (Vector3.Distance(transform.position, playerTransform.position) <= 300.0f)
             {
                 print("Switch to Chase Position");
                 curState = FSMState.Chase;
-            }
             }
             curState = FSMState.Patrol;
 
