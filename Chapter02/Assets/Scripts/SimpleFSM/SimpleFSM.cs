@@ -22,7 +22,6 @@ public class SimpleFSM : FSM
     //Tank Rotation Speed
     private float curRotSpeed;
 
-    private Vector3 curSearchDirection;
 
     //Bullet
     public GameObject Bullet;
@@ -30,6 +29,9 @@ public class SimpleFSM : FSM
     //Whether the NPC is destroyed or not
     private bool bDead;
     private int health;
+
+    private float MaxWaitTime;
+    private float CurWaitTime;
 
     // We overwrite the deprecated built-in `rigidbody` variable.
     new private Rigidbody rigidbody;
@@ -44,8 +46,9 @@ public class SimpleFSM : FSM
         bDead = false;
         elapsedTime = 0.0f;
         shootRate = 3.0f;
-        health = 100;
-        curSearchDirection = new Vector3(0, 0, 0);
+        health = 1000;
+        MaxWaitTime = 2.0f;
+        CurWaitTime = 0;
 
         //Get the list of points
         pointList = GameObject.FindGameObjectsWithTag("WandarPoint");
@@ -71,6 +74,7 @@ public class SimpleFSM : FSM
     //Update each frame
     protected override void FSMUpdate()
     {
+        if (transform.position.y != 0 && curState != FSMState.Dead) transform.position = new Vector3(transform.position.x, 0, transform.position.z);
         switch (curState)
         {
             case FSMState.Patrol: UpdatePatrolState(); break;
@@ -93,24 +97,35 @@ public class SimpleFSM : FSM
     /// </summary>
     protected void UpdateSearchState()
     {
-        destPos = curSearchDirection * Vector3.Distance(transform.position, playerTransform.position);
+        bool CanMove = true;
+        if (Vector3.Distance(transform.position, playerTransform.position) <= 300.0f)
+        {
+            print("Switch to Chase State");
+            curState = FSMState.Chase;
+        }
         if (Vector3.Distance(transform.position, destPos) <= 100.0f)
         {
-                if (Vector3.Distance(transform.position, playerTransform.position) <= 300.0f)
+            if (CurWaitTime <= MaxWaitTime)
             {
-                print("Switch to Chase Position");
-                curState = FSMState.Chase;
+                CanMove = false;
+                CurWaitTime += Time.deltaTime;
             }
-            curState = FSMState.Patrol;
-
-
+            else {
+                CurWaitTime = 0;
+                MaxWaitTime = Random.Range(1, 3);
+                Debug.Log(MaxWaitTime);
+                curState = FSMState.Patrol;
+            }
         }
         //Rotate to the target point
-        Quaternion targetRotation = Quaternion.LookRotation(destPos - transform.position);
-        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * curRotSpeed);
+        if (CanMove)
+        {
+            Quaternion targetRotation = Quaternion.LookRotation(destPos - transform.position);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * curRotSpeed);
 
-        //Go Forward
-        transform.Translate(Vector3.forward * Time.deltaTime * curSpeed);
+            //Go Forward
+            transform.Translate(Vector3.forward * Time.deltaTime * curSpeed);
+        }
     }
 
 
@@ -237,10 +252,10 @@ public class SimpleFSM : FSM
         //Reduce health
         if (collision.gameObject.tag == "Bullet")
         {
-                health -= collision.gameObject.GetComponent<Bullet>().damage;
-                print("Switch to search state");
-                curSearchDirection = -collision.gameObject.GetComponent<Bullet>().transform.forward;
-                curState = FSMState.Search;
+            health -= collision.gameObject.GetComponent<Bullet>().damage;
+            print("Switch to search state");
+            destPos = playerTransform.position;
+            curState = FSMState.Search;
         }
     }   
 
